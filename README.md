@@ -191,3 +191,148 @@ const response = await createDeclarativeBulletApi()
       .execute()
 ```
 
+-----------------------
+
+# update
+
+- Update one entity
+  
+```javascript
+const response = await createDeclarativeBulletApi()
+      .body({ _id: sampleData[0]._id, newName: "newName", myDate: new Date() })
+      .collection((c) =>
+        c.name(FIND_COLLECTION).method(BULLET_METHOD.UPDATE_ONE)
+      )
+      .execute()
+```
+
+- update by guid (from body) - increment age by 1 + add a new element into nested items array
+```javascript
+const response = await createDeclarativeBulletApi()
+      .body({
+        guid: sampleData[0].guid,
+        version: 2,
+        inc: { age: 1 },
+        push: {
+          items: { newItem: true },
+        },
+      })
+      .collection((c) =>
+        c.name(FIND_COLLECTION).method(BULLET_METHOD.UPDATE_ONE)
+      )
+      .execute()
+```
+
+- Remove one item from a nested collection
+```javascript
+const response = await createDeclarativeBulletApi()
+      .body({
+        guid: sampleData[0].guid,
+        pull: {
+          items: { newItem: true },
+        },
+      })
+      .collection((c) =>
+        c.name(FIND_COLLECTION).method(BULLET_METHOD.UPDATE_ONE)
+      )
+      .execute()
+```
+
+
+# Insert Files
+
+- Insert files on local server
+
+```javascript
+      const files: BulletFile[] = [];
+      const cFile1 = cloneBulletFile(file1);
+      cFile1.status = IFileStatus.AddedFile;
+
+      const cFile2 = cloneBulletFile(file2);
+      cFile2.status = IFileStatus.AddedFile;
+
+      files.push(cFile1);
+      files.push(cFile2);
+
+      const insertResponse = await createDeclarativeBulletApi()
+        .body({ test: 1, guid: insertUpdateGuid })
+        .collection((c) => c.name(collectionName).method(BULLET_METHOD.INSERT))
+        .storage((s) =>
+          s.bucket("claudiudeclarativeapibucket").provider(storageProvider).addFiles(files)
+        )
+        .execute()
+      
+```
+
+
+- Insert files in google bucket
+
+```javascript
+const files: BulletFile[] = [];
+      const cFile1 = cloneBulletFile(file1);
+      cFile1.status = IFileStatus.AddedFile;
+
+      const cFile2 = cloneBulletFile(file2);
+      cFile2.status = IFileStatus.AddedFile;
+
+      files.push(cFile1);
+      files.push(cFile2);
+
+      const insertResponse = await createDeclarativeBulletApi()
+        .body({ test: 1, guid: insertUpdateGuid })
+        .collection((c) => c.name(collectionName).method(BULLET_METHOD.INSERT))
+        .storage((s) =>
+          s.bucket("claudiudeclarativeapibucket").provider(storageProvider).addFiles(files)
+        )
+        .execute()
+```
+
+
+- Local files --> delete one + add new one
+```javascript
+const files: BulletFile[] = [];
+
+      const cFile1 = this.cloneBulletFile(this.state.file1);
+      cFile1.status = IFileStatus.AddedFile;
+      files.push(cFile1);
+
+      const cFile2 = this.cloneBulletFile(this.state.file2);
+      cFile2.status = IFileStatus.DeletedFile;
+      files.push(cFile2);
+
+      const insertUpdateGuid = utils.createUUID();
+
+      let apiBulletRequest = null;
+
+      const bucketName = "claudiudeclarativeapibucket";
+      const insertResponse = await createDeclarativeBulletApi()
+        .body({ test: 1, guid: insertUpdateGuid })
+        .collection((c) => c.name("insert1").method(BULLET_METHOD.INSERT))
+        .storage((s) =>
+          s.bucket(bucketName).provider(storageProvider).addFiles(files)
+        )
+        .execute()
+```
+
+- google bucket files --> delete one + add new one (linked collection)
+
+```javascript
+const files: BulletFile[] = [];
+      const cFile1 = cloneBulletFile(file1);
+      cFile1.status = IFileStatus.AddedFile;
+
+      const cFile2 = cloneBulletFile(file2);
+      cFile2.status = IFileStatus.AddedFile;
+
+      files.push(cFile1);
+      files.push(cFile2);
+
+      const insertResponse = await createDeclarativeBulletApi()
+        .body({ test: 1, guid: insertUpdateGuid })
+        .collection((c) => c.name(collectionName).method(BULLET_METHOD.INSERT))
+        .storage((s) =>
+          s.bucket("claudiudeclarativeapibucket").provider(storageProvider).addFiles(files)
+        )
+        .execute()
+      
+```
