@@ -1,0 +1,25 @@
+ - fiecare companie are tabela ei de users
+ - jwt password
+ - password complexity
+ - email regex
+ - token expiration
+ - email must be confirmed?
+ - cookie
+ - devices id's
+ - white list of up addresses
+ - mfa ?
+ - proxy {
+    request: true,
+    response :false
+ } // forwardeaza req/res to another server
+ - socket io?
+ - versioning
+ - gcp image upload
+ - dateadded  + datemodofied
+ - whitelist host
+
+
+ - ui - prezentare lista de key
+ - securizare baza de datedin cod
+
+ close any existent connection associated with key -- > deleteBulletKey

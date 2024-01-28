@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "southern-silo-328309",
+  "private_key_id": "22061acaa4a8ed952ec105012b9d18e9ddd2e86a",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDDDbhhHRUoyyWf\nvDWLl3iQWDqBUGlOfsi9rnHDfB+EOWlklUPC+PImm0gXpbA8Q4We9Vof9pbAPCD3\nSsA/8nt2IOwDF+2qqThn3S0KwcUEywz1HQ6nmCweyG+YZq2QJ4TMaRSxM/rsyRc7\nhUFOgqCGaFnzy90eERPZqL9W87OuuT4QuL3n5AtfPkPDxxdfxL4q52E8XwaWkX1k\nvEcbXf6M5MxZWEnVv+6ZMD3YljSm1MV62Djbd4PGwjprxR7XwBISEkmW8Hf1Jjws\nizZFmP71a5CVFHt3ciavtVxVwOUIR9XikMG2kave8+xVDvhzU9JIrT6UcXGMPRde\nw1zT7J9/AgMBAAECggEAO1d4wV7qOZN4elz1w2bNYMje38m5iA6NfxvL86fXJNCc\nrmO1DmPTtAgpCjy33dXDGMXXagMJASop82JUFABvLFS+yQAmJ/Y8uWiyU+P4z0kB\nQ69X7oge4Cyluu1+H23Oeqv7hh/k1tYlEdAsOrkGIm4r876Ropyad+1dbRROlbiw\nW77AwCWe7m4/CbJOzBOczG4Ssk2g87wcbgfF5NXGGYkKhLF+g6FodNIqWpbOR6Tr\nrtYaJSypSKXsXAEyVY3a2ocQwpJzGAt3WVU9o6kCnrblUEWeWeL1MOpTbZx5HrnN\nZN1q4LUXWHUbvlf/O9DFmjf6mCKedJsrsUaZqoN6cQKBgQDzyIFRKFPGOM32Z0/T\n2AAy95dSDtJTFO6J0+uzRd22c9aOpimzGMvsym2AXPc3t6t5avlknI/fZPvUgcLJ\njNdRJZ30Jp4szrCgygrnAiD6QekP9AivdW0E13+2X1qkU6FcPYxnu1R833Buzuj4\nPPZy764jF3cm4pDtGCF6Cisw0QKBgQDM1BANdhxL5y7FFxBk2awFnjCyfcXfQ91u\n4xgOS6rH+aK3UaPp0HoBVGR4b3DU7vdVoWpFwy+j2f6sZ13eLxcMK8KyIbI6YCIy\nV1RnxoAPBxaSy3f2J0a4wUp2jbN9+sLjLTONf4s4pXbq+zCoF0sJ6fJhIm5SJTMV\nwlShqItfTwKBgGvLpjrvvRNyfMhO6IKBCZ1/056KRUBNiijR13A/HYmW8THEkb3K\n4ilDXWYcNYiio6Udw0dU311ltuFBu5MJvw/3tT+Hb/vaLUn77RQ24cQnLtpKCyki\noGE6tRM8WMU+4aP650HbGMHav0mQHn3d3w/1oaeMsbg1COZ9/BeNtYlxAoGARx8L\nQ+FTCfgIAV90zc/XL0wyVIffgRqrdKld3PjhH/bKTSUH6VP+SR/okvj/ELC5KP6X\nTAnuLNKw32Q078UiF5PKUtfobuSaeyhfonkGVjF74RTNXqdcoyJanLevL3s22HMF\nh4hV6yFpHUaDKpqL77FP+/JcpCFOj6uef1NqsXkCgYEA8VwuRX6Nd1r6o3sYg6Uh\n3vgR5q8py9dJ8+gI2lVlNe7bw77dZO85TN8+iLNoyXJPA2sHIpgi2h7Z28q5Tlsj\n7zQ6IqYntNuBrGUv7mBWSxBvnc9k6TOOxU8IiqxkAiMbDaqAm2cx+cdL/e8UDS1+\nKhocuPXwCmD/zSg6s3OV1VI=\n-----END PRIVATE KEY-----\n",
+  "client_email": "bucket-upload-service@southern-silo-328309.iam.gserviceaccount.com",
+  "client_id": "116166982630122484720",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/bucket-upload-service%40southern-silo-328309.iam.gserviceaccount.com"
+}
