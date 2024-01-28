@@ -81,5 +81,113 @@ const insertResponse = await createDeclarativeBulletApi()
         .execute()
 ```
 
+------------------
 
+# Find
+
+- Find by _id and rename response keys
+
+```javascript
+    const response = await createDeclarativeBulletApi()
+      .body({ _id: sampleData[0]._id })
+      .collection((c) => c.name(FIND_COLLECTION).method(BULLET_METHOD.FIND_ONE))
+      .take((t) =>
+        t
+          .addFromInto((ft) => ft.from("age").into("ageProperty"))
+          .addFromInto((ft) => ft.from("test").into("testProperty"))
+      )
+      .execute()
+```
+
+- Find By guid
+
+```javascript
+ const response = await createDeclarativeBulletApi()
+      .body({ guid: sampleData[0].guid })
+      .collection((c) => c.name(FIND_COLLECTION).method(BULLET_METHOD.FIND_ONE))
+      .take((t) => t.fields("age,test"))
+      .execute()
+```
+
+- Find by multiple conditions
+
+```javascript
+const response = await createDeclarativeBulletApi()
+      .find((el) => el.findByObject({ test: 1, age: 5 }))
+      .collection((c) => c.name(FIND_COLLECTION).method(BULLET_METHOD.FIND_ONE))
+      .take((t) => t.exclude("items,test"))
+      .execute()
+```
+
+- Find by string expression
+
+```javascript
+const response = await createDeclarativeBulletApi()
+      .find((el) => el.expression("test = 1 && age > 4"))
+      .collection((c) => c.name(FIND_COLLECTION).method(BULLET_METHOD.FIND))
+      .sort((s) => s.field("age").ascending(true))
+      .sort((s) => s.field("categoryName").ascending(fal))
+      .execute()
+```
+
+- Find by regular expression
+```javascript
+const response = await createDeclarativeBulletApi()
+      .find((el) =>
+        el.regex({
+          categoryName: "^flo",
+        })
+      )
+      .collection((c) => c.name(FIND_COLLECTION).method(BULLET_METHOD.FIND_ONE))
+      .execute()
+```
+
+- Find by a list of values
+```javascript
+const response = await createDeclarativeBulletApi()
+      .find((el) => el.in({ age: [5, 6] }))
+      .collection((c) => c.name(FIND_COLLECTION).method(BULLET_METHOD.FIND))
+      .execute()
+```
+
+- Find into nested objects
+```javascript
+const response = await createDeclarativeBulletApi()
+      .find((el) => el.expression("items.id>3"))
+      .collection((c) => c.name(FIND_COLLECTION).method(BULLET_METHOD.FIND))
+      .sort((s) => s.field("age").ascending(false))
+      .sort((s) => s.field("categoryName").ascending(false))
+      .execute()
+      
+```
+
+# Sorting
+- Find all 
+
+```javascript
+const response = await createDeclarativeBulletApi()
+      .collection((c) =>
+        c.name(FIND_COLLECTION).method(BULLET_METHOD.FIND)
+      )
+      .sort((s) => s.field("age").ascending(false))
+      .sort((s) => s.field("categoryName").ascending(false))
+      .execute()
+```
+
+
+# Pagination
+
+- Returns the paginated items
+
+```javascript
+const response = await createDeclarativeBulletApi()
+      .find((el) => el.expression("age>0"))
+      .collection((c) =>
+        c.name(FIND_COLLECTION).method(BULLET_METHOD.PAGINATION)
+      )
+      .sort((s) => s.field("age").ascending(false))
+      .sort((s) => s.field("categoryName").ascending(false))
+      .page((p) => p.itemsOnPage(1).pageNo(1))
+      .execute()
+```
 

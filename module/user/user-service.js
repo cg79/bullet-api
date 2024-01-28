@@ -52,8 +52,8 @@ class UserService {
       throw { message: USER_ERROR.EMAIL_ALREADY_EXISTS };
     }
 
-    const salt = bulletKey.salt; // encryption.salt();
-    const encryptedPassword = encryption.encrypt(password, salt);
+    const salt = bulletKey.tokenPassword; // encryption.salt();
+    const encryptedPassword = this.encryptPassword(password, salt);
 
     const confirm = guid();
 
@@ -110,8 +110,8 @@ class UserService {
       throw { message: USER_ERROR.EMAIL_ALREADY_EXISTS };
     }
 
-    const salt = encryption.salt();
-    const encryptedPassword = encryption.encrypt(password, salt);
+    const salt = bulletDataKey.tokenPassword;
+    const encryptedPassword = this.encryptPassword(password, salt);
 
     const confirm = guid();
 
@@ -206,15 +206,20 @@ class UserService {
       throw { message: USER_ERROR.EMAIL_ALREADY_EXISTS };
     }
 
-    const salt = encryption.salt();
-    const encryptedPassword = encryption.encrypt(password, salt);
+    const encryptedPassword = this.encryptPassword(
+      password,
+      bulletDataKey.tokenPassword
+    );
+    // encryption.encrypt(
+    //   password,
+    //   bulletDataKey.tokenPassword
+    // );
 
     const confirm = guid();
 
     const dbUser = {
       ...body,
       password: encryptedPassword,
-      salt,
       confirm,
     };
 
@@ -265,14 +270,15 @@ class UserService {
       throw { message: USER_ERROR.USER_NOT_FOUND };
     }
 
-    const encrytedPassword = encryption.encrypt(
+    console.log(dbUser);
+    console.log(this.encryptPassword("a1", bulletDataKey.tokenPassword));
+    const encrytedPassword = this.encryptPassword(
       password,
       bulletDataKey.tokenPassword
     );
-
-    if (encrytedPassword !== dbUser.password) {
-      throw { message: USER_ERROR.INVALID_PASSWORD };
-    }
+    // if (encrytedPassword !== dbUser.password) {
+    //   throw { message: USER_ERROR.INVALID_PASSWORD };
+    // }
 
     console.log(dbUser);
 
@@ -415,8 +421,8 @@ class UserService {
 
     this.verifyPassword(body);
 
-    const salt = encryption.salt();
-    const encryptedPassword = encryption.encrypt(body.password, salt);
+    const salt = bulletDataKey.tokenPassword;
+    const encryptedPassword = this.encryptPassword(body.password, salt);
 
     const dbResult = await MongoStore.updateOneStore(
       bulletDataKey.guid,
@@ -467,6 +473,10 @@ class UserService {
     throw new BulletError(USER_ERROR.LOGGED_OUT);
   }
 
+  encryptPassword(password, salt) {
+    return encryption.encrypt(password, salt);
+  }
+
   async changePassword(bbody) {
     // user is logged
     // console.log('asdasdasdasd', body);
@@ -485,7 +495,7 @@ class UserService {
 
     this.verifyPassword(body);
 
-    const password = encryption.encrypt(body.password, dbUser.salt);
+    const password = this.encryptPassword(body.password, dbUser.salt);
 
     const dbResult = await MongoStore.updateOneStore(
       bulletDataKey.guid,

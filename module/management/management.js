@@ -131,7 +131,10 @@ class ManagementService {
 
       const userData = {
         email: tokenObj ? tokenObj.email : email,
-        password: encryption.encrypt(password, tokenPassword),
+        password: userService.encryptPassword(
+          password,
+          bulletObj.tokenPassword
+        ),
 
         bulletGuid: guid,
         isrootuser: true,
@@ -444,7 +447,7 @@ class ManagementService {
     const bulletKey = await this.createBulletKeyFromEmail(email);
     const userData = {
       email,
-      password: encryption.encrypt(password, bulletKey.tokenPassword),
+      password: userService.encryptPassword(password, bulletKey.tokenPassword),
 
       bulletGuid: bulletKey.guid,
       isrootuser: true,
