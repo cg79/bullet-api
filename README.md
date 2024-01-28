@@ -336,3 +336,112 @@ const files: BulletFile[] = [];
         .execute()
       
 ```
+
+# join collections
+
+- join 2 collections
+```javascript
+const response = await createDeclarativeBulletApi()
+      .collection((c) => c.name(POST_COLLECTION).method(BULLET_METHOD.FIND_ONE))
+      .join((j) =>
+        j
+          .with((w) =>
+              w.collection((c) =>
+                c.name(COMMENT_COLLECTION).method(BULLET_METHOD.FIND_ONE)
+              )
+              .field("postGuid")
+          )
+          .field("guid")
+      )
+      .join((j) =>
+        j
+          .with((w) =>
+              w.collection((c) =>
+                c.name("zsys-users").method(BULLET_METHOD.FIND_ONE)
+              )
+              .field("_id")
+          )
+          .key("ADDED_BY")
+          .field("userid")
+      )
+      .execute()
+```
+
+- join 1 to many
+
+``` javascript
+const response = await createDeclarativeBulletApi()
+      .collection((c) => c.name(POST_COLLECTION).method(BULLET_METHOD.FIND_ONE))
+      .join((j) =>
+        j
+          .with((w) =>
+              w.collection((c) =>
+                c.name(COMMENT_COLLECTION).method(BULLET_METHOD.FIND)
+              )
+              .field("postGuid")
+          )
+          .key('my_comments')
+          .field("guid")
+      )
+      .execute()
+```
+
+# custom flows
+
+- Insert Object if not exists
+  ```javascript
+  execution steps:
+      1. search into insert1 collection for an object having guid value
+      2. check the stop condition by calling the exists method from my_module (created from dashboard)
+      3. if object is found --> throw exception with code equal "errorcode"
+      4. if object is not found --> execute the rest part of the flow (which inserts the data)
+
+      const insertResponse = await createDeclarativeBulletApi()
+        .find((f) => f.findByObject({ guid }))
+        .collection((c) => c.name("insert1").method(BULLET_METHOD.FIND_ONE))
+        .flow((f) =>
+          f
+            .stopIf((e) =>
+              e
+                .errorcode("as")
+                .moduleFunction((mf) => mf.method("exists").module("my_module"))
+            )
+
+            .body({ guid, a: 1 })
+            .collection((c) => c.name("insert1").method(BULLET_METHOD.INSERT))
+        )
+        .execute()
+  ```
+
+  - Insert into collection1 followed by another flow which inserts into collection2 the collection2 response is returned under the collection2response key
+  
+  ```javascript
+  const insertResponse = await createDeclarativeBulletApi()
+        .body({ guid, a: 1 })
+        .collection((c) => c.name("collection1").method(BULLET_METHOD.INSERT))
+        .flow((f) =>
+          f
+            .body({ guid, a: 2 })
+            .collection((c) => c.name("collection2").method(BULLET_METHOD.INSERT))
+            .key("collection2response")
+        )
+        .execute()
+  ```
+
+  - nserts and returns _id's with key and alias
+  ```javascript
+      //newProp field is populated with the result of "guid" method
+
+      const insertResponse = await createDeclarativeBulletApi()
+        .body({ guid, a: 1 })
+        .collection((c) => c.name("collection1").method(BULLET_METHOD.INSERT))
+        .flow((f) =>
+          f
+            .body({ guid, a: 2 })
+            .collection((c) => c.name("collection2").method(BULLET_METHOD.INSERT))
+            .key("collection2response")
+            .take((t) => t.addFromInto((f) => f.from("_id").into("id2")))
+        )
+        .execute()
+      
+  ```

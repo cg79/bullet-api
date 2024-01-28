@@ -1,9 +1,7 @@
 const router = require("koa-router")();
 
-const Logger = require("../logger/logger");
 const { userMmanagementMiddleware } = require("../middleware/middleware");
 const managementModule = require("../module/management/management");
-const userService = require("../module/user/user-service");
 
 router
   .prefix("/bulletapi/management/v1")
