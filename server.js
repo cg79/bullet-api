@@ -151,11 +151,3 @@ server.stop = () => {
 };
 
 module.exports = server;
-
-// cryptoSocket.start();
-
-// ------------------------------------+
-
-// smtp.zoho.com
-// contact@chessboard24.com
-// KU7PzMasKU7PzMas!

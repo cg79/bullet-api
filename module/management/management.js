@@ -29,7 +29,7 @@ class ManagementService {
       body: {
         name,
         email,
-        server = "mongodb://localhost:27017",
+        server = "mongodb://0.0.0.0:27017",
         database,
         tokenPassword,
         tokenExpire = 0,
