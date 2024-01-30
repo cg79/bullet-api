@@ -145,7 +145,7 @@ describe("routes: user", () => {
     startDate = new Date().getTime();
     const body = {
       name: "bulettest",
-      server: "mongodb://localhost:27017",
+      server: "mongodb://0.0.0.0:27017",
       database: "ppuu",
       tokenPassword: "jhgasjhgsjdhgjshdgjhagdjhg",
       tokenExpire: "3h",

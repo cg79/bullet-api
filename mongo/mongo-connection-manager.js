@@ -1,9 +1,6 @@
 const { MongoClient } = require("mongodb");
 const MongoConnection = require("./mongo-connection");
 
-// const server = require('../server');
-// const MONGO_URL = "mongodb://localhost:27017/onlinecoding";
-
 class ConnectionManager {
   async createConnection(bulletDataKey) {
     const { server, database } = bulletDataKey;

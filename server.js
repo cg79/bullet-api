@@ -41,22 +41,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// app.use(
-//   cors({
-//     origin(ctx) {
-//       if (ctx.url === "/test") {
-//         return false;
-//       }
-//       return "*";
-//     },
-//     exposeHeaders: ["WWW-Authenticate", "Server-Authorization"],
-//     maxAge: 5,
-//     credentials: false,
-//     allowMethods: ["GET", "POST", "DELETE"],
-//     allowHeaders: ["Content-Type", "Authorization", "Accept", "x_bullet_key"],
-//   })
-// );
-
 app.use(cors());
 
 app.use(
@@ -90,59 +74,15 @@ lcRouter.get("/uploads/(.*)", async (ctx) => {
 
 app.use(lcRouter.routes()).use(lcRouter.allowedMethods());
 
-// lcRouter.get('/', serve('../dist', { index: 'index.html' }));
-
-// lcRouter.get("/uploads/*", async (ctx) => {
-//   await send(ctx, ctx.path);
-// });
-
-// lcRouter.get('/plm', async (ctx) => {
-//   await send(ctx, ctx.path);
-// });
-
 Logger.log(lcRouter.stack.map((i) => i));
 
 const SERVER_PORT = 3002;
 
 const port = SERVER_PORT || 3002;
-// server = app.listen(port).on('error', (err) => {
-//   if(err) {
-//     // Logger.log('error on listen server', err);
-//   } else{
-//   }
-// });
 
 server = app.listen(port, () => {
   console.log("Listening on port " + port);
 });
-
-// const ioSocket = require('./modules/socket/ioSocket');
-// ioSocket.connect(server);
-
-// const MONGO_URI = 'mongodb://testUser:xyz1234!a@localhost:27017/patagonia';
-// const MONGO_URI = 'mongodb://testUser:xyz1234!a@localhost:27017';
-// const MONGO_URI = 'mongodb://localhost:27017/patagonia4';
-// MongoQuery.connect(MONGO_URI);
-
-// this is GOOD
-// MongoQuery.connect('mongodb://testuser1:xyz123456@localhost:27017', 'patagonia');
-// MongoQuery.connect('mongodb://localhost:27017', 'patagonia4').then((dbConnection) => {
-//   server.stop = function () {
-//     MongoQuery.close();
-//     server.close();
-//   };
-// });
-
-// const uri = 'mongodb+srv://claudiu:478hBdTuFgteZPR@cluster0.cs95q.mongodb.net/myFirstDatabase?retryWrites=true&w=majority';
-// MongoQuery.connect(uri).then((dbConnection) => {
-//   console.log('connected');
-//   server.stop = function () {
-//     console.log('CLOSING');
-//     MongoQuery.close();
-//     server.close();
-//   };
-// });
-// const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 server.stop = () => {
   console.log("CLOSING");

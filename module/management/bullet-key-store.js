@@ -1,25 +1,21 @@
 const Store = require("../../store/store");
-const { DEFAULT_DB_KEY } = require('../../constants/constants');
+const { DEFAULT_DB_KEY } = require("../../constants/constants");
 
+class BulletKeysStore extends Store {
+  constructor() {
+    super();
 
-class BulletKeysStore extends Store{
+    this.add(DEFAULT_DB_KEY, {
+      server: "mongodb://0.0.0.0:27017",
+      database: "patagonia4",
+      tokenPassword: "ksjdhksjhdksjdh",
+      tokenExpire: "2h",
+    });
+  }
 
-    constructor() {
-        super();
-
-        this.add(DEFAULT_DB_KEY,{
-            server: 'mongodb://localhost:27017',
-            database: 'patagonia4',
-            tokenPassword: 'ksjdhksjhdksjdh',
-            tokenExpire: '2h'
-          });
-    }
-
-
-    defaultBulletKeyValue() {
-        return this.get(DEFAULT_DB_KEY);
-    }
-
+  defaultBulletKeyValue() {
+    return this.get(DEFAULT_DB_KEY);
+  }
 }
 
 module.exports = new BulletKeysStore();

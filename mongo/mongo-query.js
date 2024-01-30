@@ -1,5 +1,4 @@
 const { ObjectId } = require("mongodb");
-// const MONGO_URL = "mongodb://localhost:27017/onlinecoding";
 
 class MongoQuery {
   checkId(obj) {
