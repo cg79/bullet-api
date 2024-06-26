@@ -28,9 +28,6 @@
     "node-cryptojs-aes": "^0.4.0",
     "nodemailer": "^6.9.13",
     "pdf2json": "^3.0.5",
-    "request": "^2.88.2",
-    "sandbox": "^0.8.6",
-    "v8-sandbox": "^3.2.4",
     "vm2": "^3.9.11"
   },
   "devDependencies": {
