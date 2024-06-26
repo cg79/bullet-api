@@ -34,19 +34,20 @@ class Middleware {
     let tokenObj = null;
     try {
       const { authorization, origin } = ctx.req.headers;
+      const { body = {}, files } = ctx.request;
+      if (files) {
+        return this.filesMiddleware(ctx, next);
+      }
 
       const bulletConnection =
         await ConnectionManager.getConnectionForBulletKey(DEFAULT_DB_KEY);
       const { bulletDataKey } = bulletConnection;
 
       this.verifyWhiteListedDomain(bulletDataKey, origin);
-      // console.log(bulletDataKey)
-      // const tokenData = this.parseJwt(authorization);
       if (authorization) {
         tokenObj = await verify(authorization, bulletDataKey);
       }
 
-      const { body = {} } = ctx.request;
       const bodyData = body.body || body;
       bodyData.modifiedms = new Date().getTime();
 
@@ -76,6 +77,10 @@ class Middleware {
     let tokenObj = null;
     try {
       const { authorization, origin } = ctx.req.headers;
+      const { body = {}, files } = ctx.request;
+      if (files) {
+        return this.filesMiddleware(ctx, next);
+      }
 
       if (!authorization) {
         throw new Error("please provide the token authorization value");
@@ -88,10 +93,8 @@ class Middleware {
       const { bulletDataKey } = bulletConnection;
 
       this.verifyWhiteListedDomain(bulletDataKey, origin);
-      // console.log(bulletDataKey)
       tokenObj = await verify(authorization, bulletDataKey);
 
-      const { body = {} } = ctx.request;
       const bodyData = body.body || body;
       bodyData.modifiedms = new Date().getTime();
 
@@ -113,6 +116,78 @@ class Middleware {
         ctx.body = responseWrapper.successMessage(err);
         return;
       }
+      ctx.body = responseWrapper.failure(err);
+    }
+  };
+
+  filesMiddleware = async (ctx, next) => {
+    let apiResponse = null;
+    let tokenObj = null;
+    try {
+      const { authorization, origin } = ctx.req.headers;
+      const bulletConnection =
+        await ConnectionManager.getConnectionForBulletKey(DEFAULT_DB_KEY);
+      const { bulletDataKey } = bulletConnection;
+
+      this.verifyWhiteListedDomain(bulletDataKey, origin);
+      if (!authorization) {
+        throw new Error("please provide the token authorization value");
+      }
+      tokenObj = await verify(authorization, bulletDataKey);
+      debugger;
+      const body = JSON.parse(ctx.request.body.data);
+      const { files } = ctx.request;
+
+      const { storage, fileOptions, collection } = body;
+      if (fileOptions) {
+        storage.deletedFiles = fileOptions.deletedFiles || [];
+      }
+      const savedFiles = await saveFiles(files, storage, tokenObj);
+
+      const { key: storageKey = "files" } = storage;
+
+      if (!collection) {
+        ctx.body = responseWrapper.success(savedFiles);
+        return;
+      }
+      switch (collection.method) {
+        case "updateOne": {
+          const pushObj = {};
+          pushObj[`${storageKey}.list`] = [...savedFiles.list];
+          body.push = pushObj;
+
+          break;
+        }
+        default: {
+          //cover the insert as well
+          body[storageKey] = savedFiles;
+          break;
+        }
+      }
+
+      const bodyTokenAndBulletConnection = {
+        ...body,
+        bulletConnection,
+        tokenObj,
+        origin,
+      };
+
+      ctx.request.bodyTokenAndBulletConnection = bodyTokenAndBulletConnection;
+
+      apiResponse = await next(); // next is now a function
+      ctx.body = responseWrapper.success(apiResponse);
+    } catch (err) {
+      // console.log(err);
+      if (err.name === "BulletError") {
+        ctx.body = responseWrapper.successMessage(err);
+        return;
+      }
+
+      const dbErr = {
+        ...err,
+        ...tokenObj,
+      };
+      delete dbErr._id;
       ctx.body = responseWrapper.failure(err);
     }
   };

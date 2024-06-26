@@ -67,11 +67,11 @@ async function deleteLocalFiles(appdir, storage) {
 }
 
 // storage
-async function saveFiles(files, storage = {}, bulletConnection) {
+async function saveFiles(files, storage = {}, tokenObj) {
   let response = null;
 
-  const errorFunction = (err) =>
-    errorService.writeErrorToDb(err, {}, bulletConnection, tokenObj);
+  const errorFunction = (err) => 1;
+  // errorService.writeErrorToDb(err, {}, tokenObj);
 
   const { provider = "local" } = storage;
 
@@ -100,11 +100,9 @@ async function saveFiles(files, storage = {}, bulletConnection) {
   }
 
   if (provider === "local") {
-    if (bulletDataKey) {
-      const baseDirectory = bulletDataKey.guid;
-      if (baseDirectory) {
-        storage.bucket = path.join(baseDirectory, storage.bucket); // bucket means directory in this case
-      }
+    const baseDirectory = tokenObj.clientId;
+    if (baseDirectory) {
+      storage.bucket = path.join(baseDirectory, storage.bucket); // bucket means directory in this case
     }
     response = await persistFiles(
       files,
