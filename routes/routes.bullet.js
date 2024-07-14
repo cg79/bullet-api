@@ -17,7 +17,7 @@ router
   .use(publicIdentityMiddleware)
 
   .post("/executeMethodFromModule", async (ctx) => {
-    debugger;
+    // debugger;
     const { bodyTokenAndBulletConnection } = ctx.request;
     const response = await methodExecution.executeMethodFromModule(
       bodyTokenAndBulletConnection
@@ -33,7 +33,7 @@ router
     return response;
   })
   .post("/", async (ctx) => {
-    debugger;
+    // debugger;
     let response = null;
     const { bodyTokenAndBulletConnection } = ctx.request;
     const {

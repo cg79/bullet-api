@@ -120,7 +120,10 @@ class UserService {
     this.verifyEmail(body);
     this.verifyPassword(body);
 
-    const { email, password, isInvited = false, clientId = "" } = body;
+    const { email, password, nick, isInvited = false, clientId = "" } = body;
+    if (!nick) {
+      throw { message: USER_ERROR.NICK_EMPTY };
+    }
 
     let existentUser = null;
     if (clientId) {
@@ -129,7 +132,8 @@ class UserService {
         clientId,
       });
       if (existentUser) {
-        throw { message: USER_ERROR.USER_ALREADY_INVITED };
+        // throw { message: USER_ERROR.USER_ALREADY_INVITED };
+        return existentUser;
       }
     } else {
       existentUser = await bulletConnection.findOne(SYS_DBS.USERS, {
@@ -506,6 +510,37 @@ class UserService {
     }
   }
 
+  async sendEntityInvitation(bodyTokenAndBulletConnection) {
+    debugger;
+    const { body, bulletConnection, tokenObj } = bodyTokenAndBulletConnection;
+    const { entityId, email } = body;
+    const { clientId } = tokenObj;
+    delete body._id;
+
+    const invitationsCollectionName = `_invitations${clientId}`;
+    const findCriteria = {
+      email,
+    };
+    if (entityId) {
+      findCriteria.entityId = entityId;
+    }
+
+    const dbInvitationRecord = await bulletConnection.findOne(
+      invitationsCollectionName,
+      findCriteria
+    );
+    if (dbInvitationRecord) {
+      throw new Error("INVITATION_ALREADY_SENT");
+    }
+
+    await bulletConnection.insertOne(invitationsCollectionName, body);
+
+    await emailMethods.sendInvitationEmail(body);
+    return {
+      success: true,
+    };
+  }
+
   sendInvitation(bodyTokenAndBulletConnection) {
     debugger;
     const { body, bulletConnection } = bodyTokenAndBulletConnection;
@@ -515,7 +550,7 @@ class UserService {
     debugger;
     const { body, bulletConnection } = bodyTokenAndBulletConnection;
 
-    const { _id, clientId, firmaId } = body;
+    const { _id, clientId, entityId } = body;
     const invitationsCollectionName = `_invitations${clientId}`;
     const dbInvitationRecord = await bulletConnection.findOneById(
       invitationsCollectionName,
@@ -525,31 +560,109 @@ class UserService {
       throw new Error("Invitation not found");
     }
 
+    const findCriteria = {
+      email: dbInvitationRecord.email,
+      accepted: true,
+    };
+
     const allUserInvitations = await bulletConnection.find(
       invitationsCollectionName,
-      {
-        email: dbInvitationRecord.email,
-        accepted: true,
-      }
+      findCriteria
     );
-    if (allUserInvitations.length > 0) {
-      throw new Error("User already has an invitation");
+    if (allUserInvitations.length === 0) {
+      body.email = dbInvitationRecord.email;
+      body.isInvited = true;
+      await this.createUser(bodyTokenAndBulletConnection);
     }
 
-    body.email = dbInvitationRecord.email;
-    body.isInvited = true;
-
-    const response = await this.createUser(bodyTokenAndBulletConnection);
     const updatedResponse = await bulletConnection.updateOneById(
       invitationsCollectionName,
       _id,
       {
-        accepted: true,
+        $set: {
+          accepted: true,
+        },
       }
     );
     console.log(updatedResponse);
-    return response;
+    return {
+      invited: true,
+    };
   }
+
+  async getEntityInvitations(bodyTokenAndBulletConnection) {
+    debugger;
+    const { body, bulletConnection, tokenObj } = bodyTokenAndBulletConnection;
+    const { clientId, email } = tokenObj;
+    const { entityId } = body;
+    const invitationsCollectionName = `_invitations${clientId}`;
+    const filterCriteria = tokenObj.isInvited ? { email } : {};
+
+    if (entityId) {
+      filterCriteria.entityId = entityId;
+    }
+
+    const invitations = await bulletConnection.find(
+      invitationsCollectionName,
+      filterCriteria
+    );
+    return invitations;
+    // const assignedEntitiesIds = invitations.map((invitation) => {
+    //   return invitation.entityId;
+    // }, []);
+    // body.find = {
+    //   in: { _id: assignedEntitiesIds.map((id) => new ObjectId(id)) },
+    // };
+
+    // const entities = await bulletConnection.find(
+    //   `money_entity_${clientId}`,
+    //   body
+    // );
+    // return entities;
+
+    // bodyTokenAndBulletConnection.moduleName = "bullet";
+    // bodyTokenAndBulletConnection.method = "page";
+    // const response = await pubSub.publishOnce("executeMethodFromModule", {
+    //   ...bodyTokenAndBulletConnection,
+    //   ...bodyTokenAndBulletConnection.body,
+    // });
+    // return response;
+  }
+
+  async getMoneyEntitiesForInvitedUser(bodyTokenAndBulletConnection) {
+    debugger;
+    const { bulletConnection, tokenObj } = bodyTokenAndBulletConnection;
+    const { clientId } = tokenObj;
+
+    const invitations = await this.getEntityInvitations(
+      bodyTokenAndBulletConnection
+    );
+
+    const assignedEntitiesIds = invitations.map((invitation) => {
+      return invitation.entityId;
+    }, []);
+
+    const request = {
+      find: {
+        in: { _id: assignedEntitiesIds.map((id) => new ObjectId(id)) },
+      },
+    };
+
+    const entities = await bulletConnection.find(
+      `money_entity_${clientId}`,
+      request
+    );
+    return entities;
+
+    // bodyTokenAndBulletConnection.moduleName = "bullet";
+    // bodyTokenAndBulletConnection.method = "page";
+    // const response = await pubSub.publishOnce("executeMethodFromModule", {
+    //   ...bodyTokenAndBulletConnection,
+    //   ...bodyTokenAndBulletConnection.body,
+    // });
+    // return response;
+  }
+
   async getCompaniesForInvitedUser(bodyTokenAndBulletConnection) {
     debugger;
     const { body, bulletConnection } = bodyTokenAndBulletConnection;
@@ -558,9 +671,12 @@ class UserService {
     const invitations = await bulletConnection.find(invitationsCollectionName, {
       email,
     });
-    const assignedCompanies = invitations.map((invitation) => {
-      return invitation.firmaId;
-    }, []);
+    const assignedCompanies = invitations
+      .map((invitation) => {
+        return invitation.entityId;
+      }, [])
+      .filter((el) => el);
+
     body.find = {
       in: { _id: assignedCompanies.map((id) => new ObjectId(id)) },
     };

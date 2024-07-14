@@ -2,6 +2,7 @@ const utils = require("../../utils/utils");
 const mongoExpression = require("../bullet/expression/mongoExpression");
 const { executeDeltaFunction } = require("../expression/code");
 const management = require("../management/management");
+const { ObjectId } = require("mongodb");
 
 class Accounting {
   async getTaxesSalaryAndDeltaFunction(bulletConnection, angajatId) {
@@ -207,6 +208,213 @@ class Accounting {
         );
       }
     }
+    return response;
+  }
+
+  async deleteCategory(request) {
+    debugger;
+    const { body, bulletConnection, tokenObj } = request;
+    const { parentId } = body;
+    if (!parentId) {
+      throw new Error("CANNOT_DELETE_ROOT_CATEGORY");
+    }
+    const collection = `categories_${tokenObj.clientId}`;
+    const firstChild = await bulletConnection.findOne(collection, {
+      parentId: body._id,
+    });
+    if (firstChild) {
+      throw new Error("COLLECTION_CONTAINS_SUBCATEGORIES");
+    }
+
+    const moneyTransactionCollection = `money_transactions_${tokenObj.clientId}`;
+
+    const firstTransaction = await bulletConnection.findOne(
+      moneyTransactionCollection,
+      {
+        category_id: body._id,
+      }
+    );
+    if (firstTransaction) {
+      throw new Error("COLLECTION_CONTAINS_TRANSACTIONS");
+    }
+
+    await bulletConnection.deleteOneById(collection, body._id);
+  }
+
+  async updatecategoryAmounts(
+    bulletConnection,
+    categoryCollectionName,
+    parentIds,
+    body
+  ) {
+    const mongoIds = parentIds.map((id) => {
+      return ObjectId(id);
+    });
+
+    await bulletConnection.updateMany(
+      categoryCollectionName,
+      { _id: { $in: mongoIds } }, //parentIds,
+      body
+    );
+
+    const categories = await bulletConnection.find(categoryCollectionName, {
+      _id: { $in: mongoIds },
+    });
+
+    return { categories };
+  }
+
+  async addMoneyTransaction(request) {
+    const { body, bulletConnection, tokenObj } = request;
+
+    const {
+      parentIds = [],
+      category_id,
+      entityId,
+      accountId,
+      type,
+      difs,
+    } = body;
+
+    parentIds.push(category_id);
+
+    const MONEY_ACCOUNT_COLLECTION = `money_account_${tokenObj?.clientId}`;
+    const collectionExtension = entityId || tokenObj.clientId;
+
+    delete body.parentIds;
+    if (!body._id) {
+      delete body._id;
+    }
+
+    debugger;
+    const collection = `money_transactions_${collectionExtension}`;
+    if (body._id) {
+      debugger;
+      const mongoUpdateInstructions = {};
+      if (difs.amount) {
+        mongoUpdateInstructions.$inc = {
+          amount: difs.amount.current - difs.amount.prev,
+        };
+        delete difs.amount;
+      }
+
+      const MONEY_TRANSACTION_TYPE = {
+        INCOME: 1,
+        EXPENSE: 2,
+        TRANSFER: 3,
+      };
+
+      if (difs.accountId) {
+        // if(difs.type){
+        // if(difs.type.current === ){
+        // }
+
+        // revert amount from the previous account
+        await bulletConnection.updateOneById(
+          MONEY_ACCOUNT_COLLECTION,
+          difs.accountId.prev,
+          {
+            $inc: {
+              amount: difs.amount.prev * -1,
+            },
+          }
+        );
+
+        mongoUpdateInstructions.$set = {
+          accountId: difs.accountId.current,
+        };
+        delete difs.accountId;
+      }
+
+      if (difs.date) {
+        mongoUpdateInstructions.$set = {
+          date: difs.date.current,
+        };
+        delete difs.date;
+      }
+
+      if (difs.category_id) {
+        mongoUpdateInstructions.$set = {
+          category_id: difs.category_id.current,
+        };
+        delete difs.category_id;
+      }
+      await bulletConnection.updateOneById(
+        collection,
+        body._id,
+        mongoUpdateInstructions
+      );
+    } else {
+      await bulletConnection.insertOne(collection, body);
+    }
+
+    //update the available amount for the input account
+    debugger;
+
+    await bulletConnection.updateOneById(
+      MONEY_ACCOUNT_COLLECTION,
+      body.accountId,
+      {
+        $inc: {
+          amount: body.amount,
+        },
+      }
+    );
+
+    //end of update
+
+    const categoryCollection = `categories_${collectionExtension}`;
+
+    const updateRequest = {
+      $inc: {
+        transactionsAmount: body.amount,
+      },
+    };
+    const categoriesToBeUpdated = [category_id];
+    return await this.updatecategoryAmounts(
+      bulletConnection,
+      categoryCollection,
+      categoriesToBeUpdated,
+      updateRequest
+    );
+  }
+
+  async deleteMoneyTransaction(request) {
+    const { body, bulletConnection, tokenObj } = request;
+
+    const { parentIds = [], category_id, entityId } = body;
+    parentIds.push(category_id);
+
+    const collectionExtension = entityId || tokenObj.clientId;
+
+    const moneyTransactionsCollectionName = `money_transactions_${collectionExtension}`;
+
+    const response = await bulletConnection.deleteOneById(
+      moneyTransactionsCollectionName,
+      body._id
+    );
+
+    // return response;
+    const categoriesToBeUpdated = [category_id];
+    const updateRequest = {
+      $inc: {
+        transactionsAmount: -body.amount,
+      },
+    };
+    const categoryCollectionName = `categories_${collectionExtension}`;
+    return await this.updatecategoryAmounts(
+      bulletConnection,
+      categoryCollectionName,
+      categoriesToBeUpdated,
+      updateRequest
+    );
+  }
+
+  async getAccountsForInvitedUsers(request) {
+    const { body, bulletConnection, tokenObj } = request;
+    const { _id } = tokenObj;
+    const collection = `invited_users_${_id}`;
+    const response = await bulletConnection.find(collection, {});
     return response;
   }
 }

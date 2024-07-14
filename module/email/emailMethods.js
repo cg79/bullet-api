@@ -116,8 +116,11 @@ class EmailMethods {
   }
 
   async sendInvitationEmail(invitation) {
-    const { _id, email, clientId } = invitation;
-    const href = `http://${process.env.HOST}/acceptare-invitatie?_id=${_id}&clientId=${clientId}`;
+    const { _id, email, clientId, entitiyId } = invitation;
+    let href = `http://${process.env.HOST}/acceptare-invitatie?_id=${_id}&clientId=${clientId}`;
+    if (entitiyId) {
+      href += `&entityId=${entitiyId}`;
+    }
     return this.sendEmail({
       from: "QuickConta 👻 <contact@quickconta.ro>",
       to: email,

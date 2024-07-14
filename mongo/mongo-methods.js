@@ -44,17 +44,40 @@ class MongoMethods {
   }
 
   async updateOne(collection, find, body) {
-    const setCriteria = { $set: body };
-    const doc = await collection.updateOne(find, setCriteria);
-    return doc;
+    // const setCriteria = { $set: body };
+    // const setCriteria = body.$set ? body : { $set: body };
+    try {
+      const doc = await collection.updateOne(find, body);
+      return doc;
+    } catch (err) {
+      console.log(err);
+      debugger;
+    }
+  }
+
+  async updateMany(collection, find, body) {
+    // const setCriteria = { $set: body };
+    // const setCriteria = body.$set ? body : { $set: body };
+    try {
+      const doc = await collection.updateMany(find, body);
+      return doc;
+    } catch (err) {
+      console.log(err);
+      debugger;
+    }
   }
 
   async updateOneById(collection, id, body) {
     const _id = typeof id === "string" ? ObjectId(id) : id;
-
-    const setCriteria = { $set: body };
-    const doc = await collection.updateOne({ _id }, setCriteria);
-    return doc;
+    delete body._id;
+    // const setCriteria = body.$set ? body : { $set: body };
+    try {
+      const doc = await collection.updateOne({ _id }, body);
+      return doc;
+    } catch (err) {
+      console.log(err);
+      debugger;
+    }
   }
 
   async deleteMany(collection, find) {
