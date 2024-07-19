@@ -3,6 +3,13 @@ const mongoExpression = require("../bullet/expression/mongoExpression");
 const { executeDeltaFunction } = require("../expression/code");
 const management = require("../management/management");
 const { ObjectId } = require("mongodb");
+const bulletHelpers = require("../bullet/bullet-helpers");
+
+const MONEY_TRANSACTION_TYPE = {
+  INCOME: 1,
+  EXPENSE: 2,
+  TRANSFER: 3,
+};
 
 class Accounting {
   async getTaxesSalaryAndDeltaFunction(bulletConnection, angajatId) {
@@ -241,30 +248,289 @@ class Accounting {
     await bulletConnection.deleteOneById(collection, body._id);
   }
 
-  async updatecategoryAmounts(
-    bulletConnection,
-    categoryCollectionName,
-    parentIds,
-    body
-  ) {
-    const mongoIds = parentIds.map((id) => {
-      return ObjectId(id);
-    });
+  async updatecategoryAmounts(request, isTransactionDeleted) {
+    const { bulletConnection, body, tokenObj } = request;
+    const { category_id, entityId, type, amount } = body;
 
-    await bulletConnection.updateMany(
+    const collectionExtension = entityId || tokenObj.clientId;
+    const categoryCollectionName = `categories_${collectionExtension}`;
+
+    const transactionAmount = amount < 0 ? -amount : amount;
+
+    let transactionDirection = type === MONEY_TRANSACTION_TYPE.INCOME ? 1 : -1;
+    if (isTransactionDeleted) {
+      transactionDirection *= -1;
+    }
+    const updateRequest = {
+      $inc: {
+        transactionsAmount: transactionDirection * transactionAmount,
+      },
+    };
+    await bulletConnection.updateOneById(
       categoryCollectionName,
-      { _id: { $in: mongoIds } }, //parentIds,
-      body
+      category_id,
+      updateRequest
     );
 
-    const categories = await bulletConnection.find(categoryCollectionName, {
-      _id: { $in: mongoIds },
-    });
+    const category = await bulletConnection.findOneById(
+      categoryCollectionName,
+      category_id
+    );
 
-    return { categories };
+    return category;
+  }
+
+  async updateAvailableMoneyForAccout(
+    body,
+    bulletConnection,
+    MONEY_ACCOUNT_COLLECTION
+  ) {
+    const { accountId, amount } = body;
+    // let amountValue = amount;
+    // switch (type) {
+    //   case MONEY_TRANSACTION_TYPE.INCOME:
+    //     break;
+    //   case MONEY_TRANSACTION_TYPE.EXPENSE:
+    //     amountValue = -amount;
+    //     break;
+    //   case MONEY_TRANSACTION_TYPE.TRANSFER:
+    //     amountValue = -amount;
+    //     break;
+    //   default:
+    //     break;
+    // }
+
+    const updatedDbAccount = await this.updateDbAvailableAccountMoney(
+      accountId,
+      amount,
+      bulletConnection,
+      MONEY_ACCOUNT_COLLECTION
+    );
+    return updatedDbAccount;
+    // await bulletConnection.updateOneById(MONEY_ACCOUNT_COLLECTION, accountId, {
+    //   $inc: {
+    //     amount: amountValue,
+    //   },
+    // });
+  }
+
+  async updateDbAvailableAccountMoney(
+    accountId,
+    amount,
+    bulletConnection,
+    MONEY_ACCOUNT_COLLECTION
+  ) {
+    await bulletConnection.updateOneById(MONEY_ACCOUNT_COLLECTION, accountId, {
+      $inc: {
+        amount: amount,
+      },
+    });
+    return await bulletConnection.findOneById(
+      MONEY_ACCOUNT_COLLECTION,
+      accountId
+    );
+  }
+
+  async adjustAvailableMoneyForAccoutWhenAmountTransactionChanged(
+    body,
+    bulletConnection,
+    MONEY_ACCOUNT_COLLECTION
+  ) {
+    const { type, accountId, difs } = body;
+
+    const { prev: prevAmount, current: currentAmount } = difs.amount;
+    let adjustement = 0;
+
+    switch (type) {
+      case MONEY_TRANSACTION_TYPE.INCOME:
+        //inainte s-a adaugat un incasare
+        //acum ar trebuii sa se scada din incasare
+        // inainte amountul a fost amount - prevAmount
+        // acuma amountul ar trebuii sa fie cat a fost  - currentAmount, adica: amount - prevAmount - currentAmount
+        adjustement = currentAmount - prevAmount;
+
+        break;
+      case MONEY_TRANSACTION_TYPE.EXPENSE:
+        // inainte s-a scazut prev din coont asa ca trebuie sa adaug
+        adjustement = prevAmount - currentAmount;
+
+        break;
+      case MONEY_TRANSACTION_TYPE.TRANSFER:
+        break;
+      default:
+        break;
+    }
+    delete difs.amount;
+    return await this.updateDbAvailableAccountMoney(
+      accountId,
+      adjustement,
+      bulletConnection,
+      MONEY_ACCOUNT_COLLECTION
+    );
+  }
+
+  async updateAvailableMoneyForAccoutWhenDeleteTransaction(request) {
+    const { body, bulletConnection, tokenObj } = request;
+    const { accountId, type, amount } = body;
+
+    const amountValue = amount * -1;
+
+    const MONEY_ACCOUNT_COLLECTION = `money_account_${tokenObj?.clientId}`;
+
+    // switch (type) {
+    //   case MONEY_TRANSACTION_TYPE.INCOME:
+    //     amountValue = -amount;
+    //     break;
+    //   case MONEY_TRANSACTION_TYPE.EXPENSE:
+    //     amountValue = amount;
+    //     break;
+    //   case MONEY_TRANSACTION_TYPE.TRANSFER:
+    //     amountValue = -amount;
+    //     break;
+    //   default:
+    //     break;
+    // }
+
+    await bulletConnection.updateOneById(MONEY_ACCOUNT_COLLECTION, accountId, {
+      $inc: {
+        amount: amountValue,
+      },
+    });
+  }
+
+  async adjustAvailableMoneyForAccoutWhenTransactionTypeChanged(
+    body,
+    bulletConnection,
+    MONEY_ACCOUNT_COLLECTION
+  ) {
+    debugger;
+    const { accountId, difs, amount } = body;
+    const {
+      type: { prev, current },
+    } = difs;
+
+    let adjustement = 0;
+
+    if (!difs.amount) {
+      // nu s-a facut update la suma
+      switch (prev) {
+        case MONEY_TRANSACTION_TYPE.INCOME:
+          //inainte s-a adaugat un incasare
+          //acum ar trebuii sa se scada din incasare
+          // inainte amountul a fost amount - prevAmount
+          // acuma amountul ar trebuii sa fie cat a fost  - currentAmount, adica: amount - prevAmount - currentAmount
+          adjustement = -amount - amount;
+
+          break;
+        case MONEY_TRANSACTION_TYPE.EXPENSE:
+          // inainte s-a scazut prev din coont asa ca trebuie sa adaug
+          adjustement = amount + amount;
+
+          break;
+        case MONEY_TRANSACTION_TYPE.TRANSFER:
+          break;
+        default:
+          break;
+      }
+
+      return await this.updateDbAvailableAccountMoney(
+        accountId,
+        adjustement,
+        bulletConnection,
+        MONEY_ACCOUNT_COLLECTION
+      );
+    }
+
+    const { prev: prevAmount, current: currentAmount } = difs.amount;
+
+    switch (prev) {
+      case MONEY_TRANSACTION_TYPE.INCOME:
+        //inainte s-a adaugat un incasare
+        //acum ar trebuii sa se scada din incasare
+        // inainte amountul a fost amount - prevAmount
+        // acuma amountul ar trebuii sa fie cat a fost  - currentAmount, adica: amount - prevAmount - currentAmount
+        adjustement = -prevAmount - currentAmount;
+
+        break;
+      case MONEY_TRANSACTION_TYPE.EXPENSE:
+        // inainte s-a scazut prev din coont asa ca trebuie sa adaug
+        adjustement = prevAmount + prevAmount + currentAmount;
+
+        break;
+      case MONEY_TRANSACTION_TYPE.TRANSFER:
+        break;
+      default:
+        break;
+    }
+    return await this.updateDbAvailableAccountMoney(
+      accountId,
+      adjustement,
+      bulletConnection,
+      MONEY_ACCOUNT_COLLECTION
+    );
+    delete difs.amount;
+  }
+
+  async addOrEditMoneyTransaction(request) {
+    const { body } = request;
+
+    if (!body._id) {
+      delete body._id;
+    }
+
+    debugger;
+    if (body._id) {
+      return await this.editMoneyTransaction(request);
+    } else {
+      return await this.addMoneyTransaction(request);
+    }
   }
 
   async addMoneyTransaction(request) {
+    const { body, bulletConnection, tokenObj } = request;
+    debugger;
+
+    const { entityId, amount, type, accountId } = body;
+
+    let amountValue = amount;
+    switch (type) {
+      case MONEY_TRANSACTION_TYPE.INCOME:
+        break;
+      case MONEY_TRANSACTION_TYPE.EXPENSE:
+        amountValue = -amount;
+        break;
+      case MONEY_TRANSACTION_TYPE.TRANSFER:
+        amountValue = -amount;
+        break;
+      default:
+        break;
+    }
+    body.amount = amountValue;
+
+    const MONEY_ACCOUNT_COLLECTION = `money_account_${tokenObj?.clientId}`;
+    const collectionExtension = entityId || tokenObj.clientId;
+    const moneyTransactionCollection = `money_transactions_${collectionExtension}`;
+
+    const updatedDbAccount = await this.updateDbAvailableAccountMoney(
+      accountId,
+      amountValue,
+      bulletConnection,
+      MONEY_ACCOUNT_COLLECTION
+    );
+
+    body.accountAmount = updatedDbAccount.amount;
+
+    await bulletConnection.insertOne(moneyTransactionCollection, body);
+
+    const category = await this.updatecategoryAmounts({
+      body,
+      bulletConnection,
+      tokenObj,
+    });
+    return { category };
+  }
+
+  async editMoneyTransaction(request) {
     const { body, bulletConnection, tokenObj } = request;
 
     const {
@@ -274,6 +540,7 @@ class Accounting {
       accountId,
       type,
       difs,
+      amount,
     } = body;
 
     parentIds.push(category_id);
@@ -287,96 +554,78 @@ class Accounting {
     }
 
     debugger;
-    const collection = `money_transactions_${collectionExtension}`;
-    if (body._id) {
-      debugger;
-      const mongoUpdateInstructions = {};
-      if (difs.amount) {
-        mongoUpdateInstructions.$inc = {
-          amount: difs.amount.current - difs.amount.prev,
-        };
-        delete difs.amount;
-      }
+    const MONEY_TRANSACTION_COLLECTION = `money_transactions_${collectionExtension}`;
 
-      const MONEY_TRANSACTION_TYPE = {
-        INCOME: 1,
-        EXPENSE: 2,
-        TRANSFER: 3,
+    const mongoUpdateTransactionInstructions = {};
+
+    if (difs.type) {
+      mongoUpdateTransactionInstructions.$set = {
+        type: difs.type.current,
       };
-
-      if (difs.accountId) {
-        // if(difs.type){
-        // if(difs.type.current === ){
-        // }
-
-        // revert amount from the previous account
-        await bulletConnection.updateOneById(
-          MONEY_ACCOUNT_COLLECTION,
-          difs.accountId.prev,
-          {
-            $inc: {
-              amount: difs.amount.prev * -1,
-            },
-          }
+      const updatedDbAccount =
+        await this.adjustAvailableMoneyForAccoutWhenTransactionTypeChanged(
+          body,
+          bulletConnection,
+          MONEY_ACCOUNT_COLLECTION
         );
 
-        mongoUpdateInstructions.$set = {
-          accountId: difs.accountId.current,
-        };
-        delete difs.accountId;
-      }
+      mongoUpdateTransactionInstructions.$set = {
+        accountAmount: updatedDbAccount.amount,
+      };
 
-      if (difs.date) {
-        mongoUpdateInstructions.$set = {
-          date: difs.date.current,
-        };
-        delete difs.date;
-      }
+      delete difs.type;
+    }
+    if (difs.amount) {
+      mongoUpdateTransactionInstructions.$set = {
+        amount: amount,
+      };
 
-      if (difs.category_id) {
-        mongoUpdateInstructions.$set = {
-          category_id: difs.category_id.current,
-        };
-        delete difs.category_id;
-      }
-      await bulletConnection.updateOneById(
-        collection,
-        body._id,
-        mongoUpdateInstructions
-      );
-    } else {
-      await bulletConnection.insertOne(collection, body);
+      const updatedDbAccount =
+        await this.adjustAvailableMoneyForAccoutWhenAmountTransactionChanged(
+          body,
+          bulletConnection,
+          MONEY_ACCOUNT_COLLECTION
+        );
+      mongoUpdateTransactionInstructions.$set = {
+        accountAmount: updatedDbAccount.amount,
+      };
+      delete difs.amount;
     }
 
-    //update the available amount for the input account
-    debugger;
+    if (difs.accountId) {
+      mongoUpdateTransactionInstructions.$set = {
+        accountId: difs.accountId.current,
+      };
+      // revert amount from the previous account
+      await this.updateAvailableMoneyForAccout(
+        body,
+        bulletConnection,
+        MONEY_ACCOUNT_COLLECTION
+      );
 
-    await bulletConnection.updateOneById(
-      MONEY_ACCOUNT_COLLECTION,
-      body.accountId,
-      {
-        $inc: {
-          amount: body.amount,
-        },
-      }
-    );
+      delete difs.accountId;
+    }
 
-    //end of update
+    if (difs.date) {
+      mongoUpdateTransactionInstructions.$set = {
+        date: difs.date.current,
+      };
+      delete difs.date;
+    }
 
-    const categoryCollection = `categories_${collectionExtension}`;
-
-    const updateRequest = {
-      $inc: {
-        transactionsAmount: body.amount,
-      },
-    };
-    const categoriesToBeUpdated = [category_id];
-    return await this.updatecategoryAmounts(
-      bulletConnection,
-      categoryCollection,
-      categoriesToBeUpdated,
-      updateRequest
-    );
+    if (difs.category_id) {
+      mongoUpdateTransactionInstructions.$set = {
+        category_id: difs.category_id.current,
+      };
+      delete difs.category_id;
+    }
+    if (Object.keys(mongoUpdateTransactionInstructions).length > 0) {
+      await bulletConnection.updateOneById(
+        MONEY_TRANSACTION_COLLECTION,
+        body._id,
+        mongoUpdateTransactionInstructions
+      );
+    }
   }
 
   async deleteMoneyTransaction(request) {
@@ -389,25 +638,16 @@ class Accounting {
 
     const moneyTransactionsCollectionName = `money_transactions_${collectionExtension}`;
 
-    const response = await bulletConnection.deleteOneById(
+    await bulletConnection.deleteOneById(
       moneyTransactionsCollectionName,
       body._id
     );
 
-    // return response;
-    const categoriesToBeUpdated = [category_id];
-    const updateRequest = {
-      $inc: {
-        transactionsAmount: -body.amount,
-      },
-    };
-    const categoryCollectionName = `categories_${collectionExtension}`;
-    return await this.updatecategoryAmounts(
-      bulletConnection,
-      categoryCollectionName,
-      categoriesToBeUpdated,
-      updateRequest
-    );
+    debugger;
+    await this.updateAvailableMoneyForAccoutWhenDeleteTransaction(request);
+
+    const category = await this.updatecategoryAmounts(request, true);
+    return { category };
   }
 
   async getAccountsForInvitedUsers(request) {
@@ -415,6 +655,50 @@ class Accounting {
     const { _id } = tokenObj;
     const collection = `invited_users_${_id}`;
     const response = await bulletConnection.find(collection, {});
+    return response;
+  }
+
+  async aggregateAmountByCategory(request) {
+    const { body, bulletConnection, tokenObj } = request;
+    debugger;
+    const { find = {}, entityId } = body;
+    const newFind = bulletHelpers.ensureFindExpression(find, {});
+
+    const collectionExtension = entityId || tokenObj.clientId;
+    const MONEY_TRANSACTION_COLLECTION = `money_transactions_${collectionExtension}`;
+
+    // $match: {
+    //   date: { $gte: startDate, $lte: endDate },
+    // },
+
+    const pipeline = [
+      {
+        $match: newFind,
+      },
+      {
+        $group: {
+          _id: "$category_id",
+          totalAmount: { $sum: "$amount" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          category_id: "$_id",
+          totalAmount: 1,
+        },
+      },
+    ];
+    const collection = bulletConnection.getCollection(
+      MONEY_TRANSACTION_COLLECTION
+    );
+
+    const result = await collection.aggregate(pipeline).toArray();
+    console.log(result);
+    const response = {};
+    result.forEach((el) => {
+      response[el.category_id] = el.totalAmount;
+    });
     return response;
   }
 }
