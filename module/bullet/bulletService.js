@@ -76,14 +76,17 @@ class BulletService {
   };
 
   async dropCollection(bullet) {
+    debugger;
     Logger.log(bullet);
     const { body = {}, bulletConnection, tokenObj, collection } = bullet;
+    const { collectionName } = body;
+    console.log("deleting collection", collectionName);
 
-    const collectionName = bulletHelpers.getCollectionName(
-      collection,
-      tokenObj,
-      body.guid
-    );
+    // const collectionName = bulletHelpers.getCollectionName(
+    //   collection,
+    //   tokenObj,
+    //   body.guid
+    // );
 
     // if (!collectionName.startsWith("_")) {
     //   throw "Collection name must start with _";

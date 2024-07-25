@@ -255,15 +255,16 @@ class Accounting {
     const collectionExtension = entityId || tokenObj.clientId;
     const categoryCollectionName = `categories_${collectionExtension}`;
 
-    const transactionAmount = amount < 0 ? -amount : amount;
+    const field = type === MONEY_TRANSACTION_TYPE.INCOME ? "income" : "expense";
 
     let transactionDirection = type === MONEY_TRANSACTION_TYPE.INCOME ? 1 : -1;
     if (isTransactionDeleted) {
       transactionDirection *= -1;
     }
+
     const updateRequest = {
       $inc: {
-        transactionsAmount: transactionDirection * transactionAmount,
+        [field]: transactionDirection * amount,
       },
     };
     await bulletConnection.updateOneById(
@@ -489,6 +490,9 @@ class Accounting {
   async addMoneyTransaction(request) {
     const { body, bulletConnection, tokenObj } = request;
     debugger;
+    if (body.amount < 0) {
+      body.amount = -body.amount;
+    }
 
     const { entityId, amount, type, accountId } = body;
 
@@ -678,14 +682,16 @@ class Accounting {
       {
         $group: {
           _id: "$category_id",
-          totalAmount: { $sum: "$amount" },
+          income: { $sum: "$income" },
+          expense: { $sum: "$expense" },
         },
       },
       {
         $project: {
           _id: 0,
           category_id: "$_id",
-          totalAmount: 1,
+          income: 1,
+          expense: 1,
         },
       },
     ];
@@ -697,7 +703,10 @@ class Accounting {
     console.log(result);
     const response = {};
     result.forEach((el) => {
-      response[el.category_id] = el.totalAmount;
+      response[el.category_id] = {
+        income: el.income,
+        expense: el.expense,
+      };
     });
     return response;
   }

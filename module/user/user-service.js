@@ -120,7 +120,14 @@ class UserService {
     this.verifyEmail(body);
     this.verifyPassword(body);
 
-    const { email, password, nick, isInvited = false, clientId = "" } = body;
+    const {
+      email,
+      password,
+      nick,
+      isInvited = false,
+      clientId = "",
+      provider,
+    } = body;
     if (!nick) {
       throw { message: USER_ERROR.NICK_EMPTY };
     }
@@ -148,10 +155,11 @@ class UserService {
     const encryptedPassword = encryption.encrypt(password, salt);
 
     const confirm = guid();
+    const passwordField = provider ? provider : "password";
 
     const dbUser = {
       ...body,
-      password: encryptedPassword,
+      [passwordField]: encryptedPassword,
       salt,
       confirm,
       clientId: clientId || utils.guid(),
@@ -167,6 +175,9 @@ class UserService {
       ...dbUser,
     };
     delete response.password;
+    if (provider) {
+      delete response[provider];
+    }
     delete response.salt;
     delete response.token_date;
 
@@ -185,24 +196,36 @@ class UserService {
     // this.verifyEmail(body);
     // this.verifyPassword(body);
 
-    const { email, user, login, password } = body;
+    const { email, user, login, password, provider } = body;
+    debugger;
 
     const emailOrUser = email || user || login;
     if (!emailOrUser) {
       throw { message: USER_ERROR.EMAIL_EMPTY };
     }
 
-    const dbUser = await bulletConnection.findOne(SYS_DBS.USERS, {
+    let dbUser = await bulletConnection.findOne(SYS_DBS.USERS, {
       email: emailOrUser.toLowerCase(),
     });
 
     if (!dbUser) {
-      throw { message: USER_ERROR.USER_NOT_FOUND };
+      if (!provider) {
+        throw { message: USER_ERROR.USER_NOT_FOUND };
+      }
+      await this.createUser(bodyTokenAndBulletConnection);
+      dbUser = await bulletConnection.findOne(SYS_DBS.USERS, {
+        email: emailOrUser.toLowerCase(),
+      });
+      if (!dbUser) {
+        throw { message: USER_ERROR.USER_NOT_FOUND };
+      }
     }
 
     const encrytedPassword = encryption.encrypt(password, dbUser.salt);
 
-    if (encrytedPassword !== dbUser.password) {
+    const dbPassword = provider ? dbUser[provider] : dbUser.password;
+
+    if (encrytedPassword !== dbPassword) {
       throw { message: USER_ERROR.INVALID_PASSWORD };
     }
 
@@ -264,7 +287,9 @@ class UserService {
         _id: dbUser._id,
       },
       {
-        reset: body.reset,
+        $set: {
+          reset: body.reset,
+        },
       }
     );
 
@@ -328,8 +353,10 @@ class UserService {
         reset: body.reset,
       },
       {
-        password: encryptedPassword,
-        salt,
+        $set: {
+          password: encryptedPassword,
+          salt,
+        },
       }
     );
 
@@ -513,7 +540,7 @@ class UserService {
   async sendEntityInvitation(bodyTokenAndBulletConnection) {
     debugger;
     const { body, bulletConnection, tokenObj } = bodyTokenAndBulletConnection;
-    const { entityId, email } = body;
+    const { entityId, email, difs } = body;
     const { clientId } = tokenObj;
     delete body._id;
 
@@ -530,6 +557,17 @@ class UserService {
       findCriteria
     );
     if (dbInvitationRecord) {
+      if (difs && difs.name) {
+        await bulletConnection.updateOneById(
+          invitationsCollectionName,
+          dbInvitationRecord._id,
+          {
+            $set: {
+              name: difs.name.current,
+            },
+          }
+        );
+      }
       throw new Error("INVITATION_ALREADY_SENT");
     }
 

@@ -80,7 +80,7 @@ class MongoConnection {
 
   async dropCollection(collectionName) {
     const collection = this.getCollection(collectionName);
-    return await collection.dropCollection();
+    return await collection.drop();
   }
 }
 
