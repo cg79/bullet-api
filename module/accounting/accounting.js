@@ -323,7 +323,7 @@ class Accounting {
   ) {
     await bulletConnection.updateOneById(MONEY_ACCOUNT_COLLECTION, accountId, {
       $inc: {
-        amount: amount,
+        amount,
       },
     });
     return await bulletConnection.findOneById(
