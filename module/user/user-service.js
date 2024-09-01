@@ -140,7 +140,10 @@ class UserService {
       });
       if (existentUser) {
         // throw { message: USER_ERROR.USER_ALREADY_INVITED };
-        return existentUser;
+        return {
+          _id: existentUser._id,
+          email: existentUser.email,
+        };
       }
     } else {
       existentUser = await bulletConnection.findOne(SYS_DBS.USERS, {
@@ -180,6 +183,13 @@ class UserService {
     }
     delete response.salt;
     delete response.token_date;
+
+    const clonedUser = {
+      userid: dbUser._id,
+      clientId: dbUser.clientId,
+      nick: dbUser.nick,
+    };
+    await bulletConnection.insertOne(`users_${dbUser.clientId}`, clonedUser);
 
     const userResponse = this.createTokenObj(response, bulletDataKey);
 
@@ -344,7 +354,7 @@ class UserService {
 
     this.verifyPassword(body);
 
-    const salt = encryption.salt();
+    const salt = dbUser.salt; // || encryption.salt();
     const encryptedPassword = encryption.encrypt(body.password, salt);
 
     const dbResult = await bulletConnection.updateOne(
@@ -355,7 +365,7 @@ class UserService {
       {
         $set: {
           password: encryptedPassword,
-          salt,
+          // salt,
         },
       }
     );
@@ -542,6 +552,7 @@ class UserService {
     const { body, bulletConnection, tokenObj } = bodyTokenAndBulletConnection;
     const { entityId, email, difs } = body;
     const { clientId } = tokenObj;
+    body.clientId = clientId;
     delete body._id;
 
     const invitationsCollectionName = `_invitations${clientId}`;
@@ -607,10 +618,12 @@ class UserService {
       invitationsCollectionName,
       findCriteria
     );
+
+    let tokenResponse = null;
     if (allUserInvitations.length === 0) {
       body.email = dbInvitationRecord.email;
       body.isInvited = true;
-      await this.createUser(bodyTokenAndBulletConnection);
+      tokenResponse = await this.createUser(bodyTokenAndBulletConnection);
     }
 
     const updatedResponse = await bulletConnection.updateOneById(
@@ -623,9 +636,7 @@ class UserService {
       }
     );
     console.log(updatedResponse);
-    return {
-      invited: true,
-    };
+    return tokenResponse;
   }
 
   async getEntityInvitations(bodyTokenAndBulletConnection) {

@@ -38,6 +38,8 @@ class BulletHelpers {
     const { expression } = find;
     if (expression) {
       find = mongoExpression.createMongoQuery(expression);
+    } else {
+      delete find.expression;
     }
 
     this.checkFindId(find);

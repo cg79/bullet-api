@@ -489,12 +489,17 @@ class Accounting {
 
   async addMoneyTransaction(request) {
     const { body, bulletConnection, tokenObj } = request;
+    const { entityId, amount, type, accountId } = body;
     debugger;
     if (body.amount < 0) {
       body.amount = -body.amount;
     }
+    body.userid = tokenObj._id;
+    body.username = tokenObj.nick;
 
-    const { entityId, amount, type, accountId } = body;
+    const MONEY_ACCOUNT_COLLECTION = `money_account_${tokenObj?.clientId}`;
+    const collectionExtension = entityId || tokenObj.clientId;
+    const moneyTransactionCollection = `money_transactions_${collectionExtension}`;
 
     let amountValue = amount;
     switch (type) {
@@ -505,15 +510,19 @@ class Accounting {
         break;
       case MONEY_TRANSACTION_TYPE.TRANSFER:
         amountValue = -amount;
+        const { touseraccountid } = body;
+
+        await this.updateDbAvailableAccountMoney(
+          touseraccountid,
+          Math.abs(amount),
+          bulletConnection,
+          MONEY_ACCOUNT_COLLECTION
+        );
         break;
       default:
         break;
     }
     body.amount = amountValue;
-
-    const MONEY_ACCOUNT_COLLECTION = `money_account_${tokenObj?.clientId}`;
-    const collectionExtension = entityId || tokenObj.clientId;
-    const moneyTransactionCollection = `money_transactions_${collectionExtension}`;
 
     const updatedDbAccount = await this.updateDbAvailableAccountMoney(
       accountId,
